@@ -41,3 +41,5 @@ for _ in range(5):
     cache_value = redis_client.get("configuracao_cache")
     end_time = time.time()
     print(f"Cache: {cache_value} | Tempo: {end_time - start_time:.6f}s")
+
+    print("\nTeste concluído com sucesso!")
