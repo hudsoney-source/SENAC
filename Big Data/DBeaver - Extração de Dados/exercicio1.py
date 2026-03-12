@@ -6,8 +6,8 @@
 
 #Elaborar dez perguntas que poderiam ser respondidas a partir da análise dessa base de dados.
 
-# Qual é o filme mais antigo presente na lista dos 250 melhores filmes da IMDb?
-'''O Garoto (The Kid), lançado em 1921. Outros "vovôs" da lista incluem "O Encouraçado Potemkin" (1925) e "Metrópolis" (1927).''
+#1. Qual é o filme mais antigo presente na lista dos 250 melhores filmes da IMDb?
+'''O Garoto (The Kid), lançado em 1921. Outros "vovôs" da lista incluem "O Encouraçado Potemkin" (1925) e "Metrópolis" (1927).'''
 
 #2. Quais são os diretores mais frequentes entre os 250 melhores filmes da IMDb?
 '''Christopher Nolan (8 filmes), Steven Spielberg (7 filmes), Martin Scorsese (6 filmes), Quentin Tarantino (5 filmes), Stanley Kubrick (5 filmes), Akira Kurosawa (6 a 7 filmes), Alfred Hitchcock (5 a 6 filmes)Charles Chaplin (5 filmes).'''
