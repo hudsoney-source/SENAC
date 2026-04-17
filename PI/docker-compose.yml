@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # Redis - Cache e Real-time Data Stream
+  redis:
+    image: redis:7-alpine
+    container_name: smartwatch-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - smartwatch-network
+
+  # PostgreSQL - Banco de Dados Principal
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartwatch-postgres
+    environment:
+      POSTGRES_USER: smartwatch_user
+      POSTGRES_PASSWORD: SecurePassword123!
+      POSTGRES_DB: fatigue_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartwatch_user -d fatigue_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - smartwatch-network
+
+  # Backend API - Node.js/Express
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartwatch-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://smartwatch_user:SecurePassword123!@postgres:5432/fatigue_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-secret-key-here-change-in-production
+      JWT_EXPIRE: 24h
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:5173
+      LOG_LEVEL: info
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm start
+    networks:
+      - smartwatch-network
+    restart: unless-stopped
+
+  # AI Service (Python FastAPI)
+  ai-service:
+    build:
+      context: ./ai-model
+      dockerfile: Dockerfile
+    container_name: smartwatch-ai-service
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://smartwatch_user:SecurePassword123!@postgres:5432/fatigue_db
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./ai-model:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - smartwatch-network
+    restart: unless-stopped
+
+  # pgAdmin - Gerenciamento de BD
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartwatch-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@smartwatch.local
+      PGADMIN_DEFAULT_PASSWORD: AdminPassword123!
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - smartwatch-network
+    restart: unless-stopped
+
+  # Redis Commander - Monitoramento Redis
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: smartwatch-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - smartwatch-network
+    restart: unless-stopped
+
+  # Nginx - Proxy Reverso e Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: smartwatch-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - smartwatch-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  smartwatch-network:
+    driver: bridge
+
+# Comandos úteis:
+# docker-compose up -d              # Iniciar serviços
+# docker-compose down               # Parar serviços
+# docker-compose logs -f backend    # Ver logs
+# docker-compose ps                 # Status dos serviços
+# docker-compose exec postgres psql -U smartwatch_user -d fatigue_db  # Acessar BD
+# docker volume ls                  # Listar volumes
